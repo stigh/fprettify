@@ -301,23 +301,24 @@ class where_parser(parser_re):
 
 forall_parser = where_parser
 
-def build_scope_parser(fypp=True, mod=True):
+def build_scope_parser(fypp=True, mod=True, subr=True):
+# build_scope_parser builds a "parser" for the environments that will be indented. There are 3 special cases:
+# 1. If and only if mod=True, the blocks of [module, program] will be indented.
+# 2. If and only if subr=True, the blocks of [subroutine, function] will be indented.
+# 3. If and only if fypp=True, the fypp preprocessor blocks will be indented.
     parser = {}
     parser['new'] = \
-        [parser_re(IF_RE), parser_re(DO_RE), parser_re(SELCASE_RE), parser_re(SUBR_RE),
-         parser_re(FCT_RE),
+        [parser_re(IF_RE), parser_re(DO_RE), parser_re(SELCASE_RE),
          parser_re(INTERFACE_RE), parser_re(TYPE_RE), parser_re(ENUM_RE), parser_re(ASSOCIATE_RE),
          None, parser_re(BLK_RE), where_parser(WHERE_RE), forall_parser(FORALL_RE)]
 
     parser['continue'] = \
-        [parser_re(ELSE_RE), None, parser_re(CASE_RE), parser_re(CONTAINS_RE),
-         parser_re(CONTAINS_RE),
+        [parser_re(ELSE_RE), None, parser_re(CASE_RE),
          None, parser_re(CONTAINS_RE), None, None,
          None, None, parser_re(ELSEWHERE_RE), None]
 
     parser['end'] = \
-        [parser_re(ENDIF_RE), parser_re(ENDDO_RE), parser_re(ENDSEL_RE), parser_re(ENDSUBR_RE),
-         parser_re(ENDFCT_RE),
+        [parser_re(ENDIF_RE), parser_re(ENDDO_RE), parser_re(ENDSEL_RE),
          parser_re(ENDINTERFACE_RE), parser_re(ENDTYPE_RE), parser_re(ENDENUM_RE), parser_re(ENDASSOCIATE_RE),
          parser_re(ENDANY_RE,spec=False), parser_re(ENDBLK_RE), parser_re(ENDWHERE_RE), parser_re(ENDFORALL_RE)]
 
@@ -325,6 +326,11 @@ def build_scope_parser(fypp=True, mod=True):
         parser['new'].extend([parser_re(MOD_RE), parser_re(SMOD_RE), parser_re(PROG_RE)])
         parser['continue'].extend([parser_re(CONTAINS_RE), parser_re(CONTAINS_RE), parser_re(CONTAINS_RE)])
         parser['end'].extend([parser_re(ENDMOD_RE), parser_re(ENDSMOD_RE), parser_re(ENDPROG_RE)])
+
+    if subr:
+        parser['new'].extend([parser_re(SUBR_RE), parser_re(FCT_RE)])
+        parser['continue'].extend([parser_re(CONTAINS_RE), parser_re(CONTAINS_RE)])
+        parser['end'].extend([parser_re(ENDSUBR_RE), parser_re(ENDFCT_RE)])
 
     if fypp:
         parser['new'].extend(PREPRO_NEW_SCOPE)
@@ -1043,19 +1049,20 @@ def format_single_fline(f_line, whitespace, whitespace_dict, linebreak_pos,
             'print': 6,           # 6: print / read statements
             'type': 7,            # 7: select type components
             'intrinsics': 8,      # 8: intrinsics
-            'decl': 9             # 9: declarations
+            'decl': 9,             # 9: declarations
+            'use_only': 10
             }
 
     if whitespace == 0:
-        spacey = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        spacey = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     elif whitespace == 1:
-        spacey = [1, 1, 1, 1, 0, 0, 1, 0, 1, 1]
+        spacey = [1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1]
     elif whitespace == 2:
-        spacey = [1, 1, 1, 1, 1, 0, 1, 0, 1, 1]
+        spacey = [1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1]
     elif whitespace == 3:
-        spacey = [1, 1, 1, 1, 1, 1, 1, 0, 1, 1]
+        spacey = [1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1]
     elif whitespace == 4:
-        spacey = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        spacey = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     else:
         raise NotImplementedError("unknown value for whitespace")
 
@@ -1314,8 +1321,8 @@ def add_whitespace_context(line, spacey):
 
     # format ':' for labels and use only statements
     if USE_RE.search(line):
-        line = re.sub(r'(only)\s*:\s*', r'\g<1>:' + ' ' *
-                      spacey[0], line, flags=RE_FLAGS)
+        line = re.sub(r'(only)\s*:\s*', r'\g<1>' + ' ' * spacey[10] + ':' + ' ' * spacey[0], line, flags=RE_FLAGS)
+
 
     return line
 
@@ -1419,7 +1426,8 @@ def reformat_inplace(filename, stdout=False, diffonly=False, **kwargs):  # pragm
 def reformat_ffile(infile, outfile, impose_indent=True, indent_size=3, strict_indent=False, impose_whitespace=True,
                    case_dict={},
                    impose_replacements=False, cstyle=False, whitespace=2, whitespace_dict={}, llength=132,
-                   strip_comments=False, format_decl=False, orig_filename=None, indent_fypp=True, indent_mod=True):
+                   strip_comments=False, format_decl=False, orig_filename=None, indent_fypp=True, indent_mod=True,
+                   indent_subroutine=True, keep_blank_lines=False):
     """main method to be invoked for formatting a Fortran file."""
 
     # note: whitespace formatting and indentation may require different parsing rules
@@ -1442,7 +1450,8 @@ def reformat_ffile(infile, outfile, impose_indent=True, indent_size=3, strict_in
         reformat_ffile_combined(oldfile, newfile, _impose_indent, indent_size, strict_indent, impose_whitespace,
                                 case_dict,
                                 impose_replacements, cstyle, whitespace, whitespace_dict, llength,
-                                strip_comments, format_decl, orig_filename, indent_fypp, indent_mod)
+                                strip_comments, format_decl, orig_filename, indent_fypp, indent_mod,
+                                indent_subroutine, keep_blank_lines)
         oldfile = newfile
 
     # 2) indentation
@@ -1455,7 +1464,8 @@ def reformat_ffile(infile, outfile, impose_indent=True, indent_size=3, strict_in
         reformat_ffile_combined(oldfile, newfile, impose_indent, indent_size, strict_indent, _impose_whitespace,
                                 case_dict,
                                 _impose_replacements, cstyle, whitespace, whitespace_dict, llength,
-                                strip_comments, format_decl, orig_filename, indent_fypp, indent_mod)
+                                strip_comments, format_decl, orig_filename, indent_fypp, indent_mod,
+                                indent_subroutine, keep_blank_lines)
 
 
     outfile.write(newfile.getvalue())
@@ -1464,7 +1474,8 @@ def reformat_ffile(infile, outfile, impose_indent=True, indent_size=3, strict_in
 def reformat_ffile_combined(infile, outfile, impose_indent=True, indent_size=3, strict_indent=False, impose_whitespace=True,
                             case_dict={},
                             impose_replacements=False, cstyle=False, whitespace=2, whitespace_dict={}, llength=132,
-                            strip_comments=False, format_decl=False, orig_filename=None, indent_fypp=True, indent_mod=True):
+                            strip_comments=False, format_decl=False, orig_filename=None, indent_fypp=True, indent_mod=True,
+                            indent_subroutine=True, keep_blank_lines=False):
 
     if not orig_filename:
         orig_filename = infile.name
@@ -1480,7 +1491,7 @@ def reformat_ffile_combined(infile, outfile, impose_indent=True, indent_size=3, 
 
     if not has_fypp: indent_fypp = False
 
-    scope_parser = build_scope_parser(fypp=indent_fypp, mod=indent_mod)
+    scope_parser = build_scope_parser(fypp=indent_fypp, mod=indent_mod, subr=indent_subroutine)
 
     # initialization
 
@@ -1608,7 +1619,7 @@ def reformat_ffile_combined(infile, outfile, impose_indent=True, indent_size=3, 
 
         # rm subsequent blank lines
         skip_blank = EMPTY_RE.search(
-            f_line) and not any(comments) and not is_omp_conditional and not label
+            f_line) and not any(comments) and not is_omp_conditional and not label and not keep_blank_lines
 
 
 def format_comments(lines, comments, strip_comments):
@@ -1986,6 +1997,8 @@ def run(argv=sys.argv):  # pragma: no cover
                             help="boolean, en-/disable whitespace for select type components")
         parser.add_argument("--whitespace-intrinsics", type=str2bool, nargs="?", default="None", const=True,
                             help="boolean, en-/disable whitespace for intrinsics like if/write/close")
+        parser.add_argument("--whitespace-use-only", type=str2bool, nargs="?", default="None", const=True,
+                            help="boolean, en-/disable whitespace for the colon after `use MODULE, only`")
         parser.add_argument("--strict-indent", action='store_true', default=False, help="strictly impose indentation even for nested loops")
         parser.add_argument("--enable-decl", action="store_true", default=False, help="enable whitespace formatting of declarations ('::' operator).")
         parser.add_argument("--disable-indent", action='store_true', default=False, help="don't impose indentation")
@@ -2003,7 +2016,9 @@ def run(argv=sys.argv):  # pragma: no cover
                             help="Disables the indentation of fypp preprocessor blocks.")
         parser.add_argument('--disable-indent-mod', action='store_true', default=False,
                             help="Disables the indentation after module / program.")
-
+        parser.add_argument('--disable-indent-subroutine', action='store_true', default=False,
+                            help="Disables the indentation after subroutine / function.")
+        parser.add_argument("--keep-blank-lines", action='store_true', default=False, help="Disables the removal of consecutive/trailing blank lines.")
         parser.add_argument("-d","--diff", action='store_true', default=False,
                              help="Write file differences to stdout instead of formatting inplace")
         parser.add_argument("-s", "--stdout", action='store_true', default=False,
@@ -2044,6 +2059,7 @@ def run(argv=sys.argv):  # pragma: no cover
         ws_dict['print'] = args.whitespace_print
         ws_dict['type'] = args.whitespace_type
         ws_dict['intrinsics'] = args.whitespace_intrinsics
+        ws_dict['use_only'] = args.whitespace_use_only
         return ws_dict
 
     # support legacy input:
@@ -2136,7 +2152,9 @@ def run(argv=sys.argv):  # pragma: no cover
                                  strip_comments=file_args.strip_comments,
                                  format_decl=file_args.enable_decl,
                                  indent_fypp=not file_args.disable_fypp,
-                                 indent_mod=not file_args.disable_indent_mod)
+                                 indent_mod=not file_args.disable_indent_mod,
+                                 indent_subroutine=not file_args.disable_indent_subroutine,
+                                 keep_blank_lines=file_args.keep_blank_lines)
             except FprettifyException as e:
                 log_exception(e, "Fatal error occured")
                 sys.exit(1)
