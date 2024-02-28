@@ -1564,12 +1564,11 @@ def reformat_ffile_combined(infile, outfile, impose_indent=True, indent_size=3, 
             if impose_case:
                 f_line = replace_keywords_single_fline(f_line, case_dict)
 
-            if impose_whitespace:
-                lines = format_single_fline(
-                    f_line, whitespace, whitespace_dict, linebreak_pos, ampersand_sep,
-                    scope_parser, format_decl, orig_filename, stream.line_nr, auto_format)
+            lines = format_single_fline(
+                f_line, whitespace, whitespace_dict, linebreak_pos, ampersand_sep,
+                scope_parser, format_decl, orig_filename, stream.line_nr, impose_whitespace)
 
-                lines = append_comments(lines, comment_lines, is_special)
+            lines = append_comments(lines, comment_lines, is_special)
 
             # target indent for next line
             rel_indent = req_indents[nfl] if nfl < len(req_indents) else 0
