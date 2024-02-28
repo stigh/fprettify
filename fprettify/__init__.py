@@ -527,7 +527,8 @@ class F90Indenter(object):
             self._indent_storage = [0]
 
     def process_lines_of_fline(self, f_line, lines, rel_ind, rel_ind_con,
-                               line_nr, indent_fypp=True, manual_lines_indent=None):
+                               line_nr, indent_fypp=True, manual_lines_indent=None,
+                               indent_use_entities=2):
         """
         Process all lines that belong to a Fortran line `f_line`.
 
@@ -629,7 +630,7 @@ class F90Indenter(object):
         # deal with line breaks
         if not manual_lines_indent:
             self._aligner.process_lines_of_fline(
-                f_line, lines, rel_ind_con, line_nr)
+                f_line, lines, rel_ind_con, line_nr, indent_use_entities)
             br_indent_list = self._aligner.get_lines_indent()
         else:
             br_indent_list = manual_lines_indent
@@ -716,7 +717,8 @@ class F90Aligner(object):
         self._level = 0
         self._br_indent_list = [0]
 
-    def process_lines_of_fline(self, f_line, lines, rel_ind, line_nr):
+    def process_lines_of_fline(self, f_line, lines, rel_ind, line_nr,
+                               indent_use_entities=2):
         """
         process all lines that belong to a Fortran line `f_line`,
         `rel_ind` is the relative indentation size.
@@ -728,7 +730,8 @@ class F90Aligner(object):
         is_use = USE_RE.search(f_line)
         for pos, line in enumerate(lines):
             self.__align_line_continuations(
-                line, is_decl, is_use, rel_ind, self._line_nr + pos)
+                line, is_decl, is_use, rel_ind, self._line_nr + pos,
+                indent_use_entities)
             if pos + 1 < len(lines):
                 self._line_indents.append(self._br_indent_list[-1])
 
@@ -740,7 +743,8 @@ class F90Aligner(object):
         """after processing, retrieve the indents of all line parts."""
         return self._line_indents
 
-    def __align_line_continuations(self, line, is_decl, is_use, indent_size, line_nr):
+    def __align_line_continuations(self, line, is_decl, is_use, indent_size, line_nr,
+                                   indent_use_entities=2):
         """align continuation lines."""
 
         indent_list = self._br_indent_list
@@ -823,7 +827,15 @@ class F90Aligner(object):
             elif is_decl and line[pos:pos + 2] == '::' and not re.search(r"::\s*" + LINEBREAK_STR, line, RE_FLAGS):
                 indent_list.append(pos + 3 + indent_list[-1])
             elif is_use and line[pos] == ':' and not re.search(r":\s*" + LINEBREAK_STR, line, RE_FLAGS):
-                indent_list.append(pos + 2 + indent_list[-1])
+                if (indent_use_entities == 1):
+                    # Indent entities with use intrinsics
+                    indent_list.append(4 + indent_list[-1])
+                elif (indent_use_entities == 2):
+                    # Indent entities with ':'
+                    indent_list.append(pos + 2 + indent_list[-1])
+                elif (indent_use_entities == 3):
+                    # Indent entities with ':'
+                    indent_list.append(indent_size + indent_list[-1])
 
         # Don't align if delimiter opening directly before line break
         if level and re.search(DEL_OPEN_STR + r"\s*" + LINEBREAK_STR, line,
@@ -1420,7 +1432,7 @@ def reformat_ffile(infile, outfile, impose_indent=True, indent_size=3, strict_in
                    case_dict={},
                    impose_replacements=False, cstyle=False, whitespace=2, whitespace_dict={}, llength=132,
                    strip_comments=False, format_decl=False, orig_filename=None, indent_fypp=True, indent_mod=True,
-                   max_consecutive_empty_lines=1):
+                   indent_use_entities=2, max_consecutive_empty_lines=1):
     """main method to be invoked for formatting a Fortran file."""
 
     # note: whitespace formatting and indentation may require different parsing rules
@@ -1444,7 +1456,7 @@ def reformat_ffile(infile, outfile, impose_indent=True, indent_size=3, strict_in
                                 case_dict,
                                 impose_replacements, cstyle, whitespace, whitespace_dict, llength,
                                 strip_comments, format_decl, orig_filename, indent_fypp, indent_mod,
-                                max_consecutive_empty_lines)
+                                indent_use_entities, max_consecutive_empty_lines)
         oldfile = newfile
 
     # 2) indentation
@@ -1458,7 +1470,7 @@ def reformat_ffile(infile, outfile, impose_indent=True, indent_size=3, strict_in
                                 case_dict,
                                 _impose_replacements, cstyle, whitespace, whitespace_dict, llength,
                                 strip_comments, format_decl, orig_filename, indent_fypp, indent_mod,
-                                max_consecutive_empty_lines)
+                                indent_use_entities, max_consecutive_empty_lines)
 
 
     outfile.write(newfile.getvalue())
@@ -1468,7 +1480,7 @@ def reformat_ffile_combined(infile, outfile, impose_indent=True, indent_size=3, 
                             case_dict={},
                             impose_replacements=False, cstyle=False, whitespace=2, whitespace_dict={}, llength=132,
                             strip_comments=False, format_decl=False, orig_filename=None, indent_fypp=True, indent_mod=True,
-                            max_consecutive_empty_lines=1):
+                            indent_use_entities=2, max_consecutive_empty_lines=1):
 
     if not orig_filename:
         orig_filename = infile.name
@@ -1585,7 +1597,8 @@ def reformat_ffile_combined(infile, outfile, impose_indent=True, indent_size=3, 
             if indent_special != 3:
                 indenter.process_lines_of_fline(
                     f_line, lines, rel_indent, indent_size,
-                    stream.line_nr, indent_fypp, manual_lines_indent)
+                    stream.line_nr, indent_fypp, manual_lines_indent,
+                    indent_use_entities)
                 indent = indenter.get_lines_indent()
 
             lines, indent = prepend_ampersands(lines, indent, pre_ampersand)
@@ -2008,6 +2021,11 @@ def run(argv=sys.argv):  # pragma: no cover
                             help="Disables the indentation of fypp preprocessor blocks.")
         parser.add_argument('--disable-indent-mod', action='store_true', default=False,
                             help="Disables the indentation after module / program.")
+        parser.add_argument("--indent-use-entities", type=int, choices=range(1, 4), default=2,
+                            help="How to indent use entities - "
+                            "   1: indent entities with use intrinsic"
+                            " | 2: indent entities with ':'"
+                            " | 3: indent entities with configured indentation")
 
         parser.add_argument("-d","--diff", action='store_true', default=False,
                              help="Write file differences to stdout instead of formatting inplace")
@@ -2142,6 +2160,7 @@ def run(argv=sys.argv):  # pragma: no cover
                                  format_decl=file_args.enable_decl,
                                  indent_fypp=not file_args.disable_fypp,
                                  indent_mod=not file_args.disable_indent_mod,
+                                 indent_use_entities=file_args.indent_use_entities,
                                  max_consecutive_empty_lines=file_args.max_consecutive_empty_lines)
             except FprettifyException as e:
                 log_exception(e, "Fatal error occured")
