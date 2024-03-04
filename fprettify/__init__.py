@@ -959,12 +959,12 @@ def replace_relational_single_fline(f_line, cstyle):
             if not STR_OPEN_RE.match(part):
                 # also exclude / if we see a namelist and data statement
                 if cstyle:
-                    part = re.sub(r"\.LT\.", "<   ", part, flags=RE_FLAGS)
-                    part = re.sub(r"\.LE\.", "<=  ", part, flags=RE_FLAGS)
-                    part = re.sub(r"\.GT\.", ">   ", part, flags=RE_FLAGS)
-                    part = re.sub(r"\.GE\.", ">=  ", part, flags=RE_FLAGS)
-                    part = re.sub(r"\.EQ\.", "==  ", part, flags=RE_FLAGS)
-                    part = re.sub(r"\.NE\.", "/=  ", part, flags=RE_FLAGS)
+                    part = re.sub(r"\.LT\.", "<", part, flags=RE_FLAGS)
+                    part = re.sub(r"\.LE\.", "<=", part, flags=RE_FLAGS)
+                    part = re.sub(r"\.GT\.", ">", part, flags=RE_FLAGS)
+                    part = re.sub(r"\.GE\.", ">=", part, flags=RE_FLAGS)
+                    part = re.sub(r"\.EQ\.", "==", part, flags=RE_FLAGS)
+                    part = re.sub(r"\.NE\.", "/=", part, flags=RE_FLAGS)
                 else:
                     part = re.sub(r"<=",  ".le.", part, flags=RE_FLAGS)
                     part = re.sub(r"<",   ".lt.", part, flags=RE_FLAGS)
