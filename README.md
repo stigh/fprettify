@@ -109,6 +109,8 @@ For more options, read
 fprettify -h
 ```
 
+When cleaning up inline comments, `--strip-comments` removes superfluous whitespace in front of comment markers. Combine it with `--comment-spacing N` to specify how many spaces should remain between code and the trailing comment (default: 1).
+
 ## Editor integration
 
 For editor integration, use
