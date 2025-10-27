@@ -1,0 +1,42 @@
+name: Static analysis
+
+on:
+  push:
+    branches:
+      - master
+      - devel
+  pull_request:
+    branches:
+      - master
+      - devel
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  black:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+
+      - name: Code formatting with black
+        run: |
+          pip install black "black[jupyter]"
+          black --check .
+
+  isort:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+
+      - name: Code formatting with isort
+        run: |
+          pip install isort
+          isort --check .
+
