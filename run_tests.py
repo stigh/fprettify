@@ -26,11 +26,17 @@ import os
 import sys
 import argparse
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Run tests', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-r", "--reset", action='store_true', default=False,
-                        help="Reset test results to new results of failed tests")
+        description="Run tests", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "-r",
+        "--reset",
+        action="store_true",
+        default=False,
+        help="Reset test results to new results of failed tests",
+    )
 
     args = parser.parse_args()
 
@@ -38,8 +44,8 @@ if __name__ == '__main__':
     unittest.TextTestRunner(verbosity=2).run(suite)
 
     if args.reset and os.path.isfile(FAILED_FILE):
-        sep_str = ' : '
-        with io.open(FAILED_FILE, 'r', encoding='utf-8') as infile:
+        sep_str = " : "
+        with io.open(FAILED_FILE, "r", encoding="utf-8") as infile:
             for failed_line in infile:
                 failed_content = failed_line.strip().split(sep_str)
                 for result_line in fileinput.input(RESULT_FILE, inplace=True):
