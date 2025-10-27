@@ -18,13 +18,14 @@
 #    along with fprettify. If not, see <http://www.gnu.org/licenses/>.
 ###############################################################################
 
-import unittest
-from fprettify.tests import FPrettifyTestCase, FAILED_FILE, RESULT_FILE
+import argparse
 import fileinput
 import io
 import os
 import sys
-import argparse
+import unittest
+
+from fprettify.tests import FAILED_FILE, RESULT_FILE, FPrettifyTestCase
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

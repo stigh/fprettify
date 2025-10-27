@@ -21,23 +21,23 @@
 """Dynamically create tests based on examples in examples/before."""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import sys
-import os
-import unittest
-import hashlib
-import logging
-import io
-import re
 import difflib
-import subprocess
+import hashlib
 import inspect
+import io
+import logging
+import os
+import re
+import subprocess
+import sys
+import unittest
 
 sys.stderr = io.TextIOWrapper(
     sys.stderr.detach(), encoding="UTF-8", line_buffering=True
 )
 
 import fprettify
-from fprettify.fparse_utils import FprettifyParseException, FprettifyInternalException
+from fprettify.fparse_utils import FprettifyInternalException, FprettifyParseException
 
 
 def joinpath(path1, path2):
