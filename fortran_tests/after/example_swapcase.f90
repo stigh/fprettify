@@ -180,9 +180,9 @@ PROGRAM example_prog
          DO l = 1, 3
          DO i = 4, 5
             DO my_integer = 1, 1
-            DO j = 1, 2
-               WRITE (*, *) test_function(m, r, k, l) + i
-            END DO
+               DO j = 1, 2
+                  WRITE (*, *) test_function(m, r, k, l) + i
+               END DO
             END DO
          END DO
          END DO
