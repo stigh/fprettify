@@ -18,28 +18,41 @@
 #    along with fprettify. If not, see <http://www.gnu.org/licenses/>.
 ###############################################################################
 
-import unittest
-from fprettify.tests.unittests import FprettifyUnitTestCase
-from fprettify.tests.fortrantests import generate_suite, FAILED_FILE, RESULT_FILE
+import argparse
 import fileinput
 import io
 import os
 import sys
-import argparse
+import unittest
 
-if __name__ == '__main__':
+from fprettify.tests.fortrantests import FAILED_FILE, RESULT_FILE, generate_suite
+from fprettify.tests.unittests import FprettifyUnitTestCase
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Run tests', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-r", "--reset", action='store_true', default=False,
-                        help="Reset test results to new results of failed tests")
-    parser.add_argument("-n", "--name", type=str, help="select tests by name (sections in testsuites.config).")
+        description="Run tests", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "-r",
+        "--reset",
+        action="store_true",
+        default=False,
+        help="Reset test results to new results of failed tests",
+    )
+    parser.add_argument(
+        "-n",
+        "--name",
+        type=str,
+        help="select tests by name (sections in testsuites.config).",
+    )
 
     parser.add_argument(
-            "-s", "--suite",
-            nargs="+",
-            choices=["unittests", "builtin", "regular", "cron", "custom"],
-            default=["unittests", "builtin"],
-            help="select suite."
+        "-s",
+        "--suite",
+        nargs="+",
+        choices=["unittests", "builtin", "regular", "cron", "custom"],
+        default=["unittests", "builtin"],
+        help="select suite.",
     )
 
     args = parser.parse_args()
@@ -63,8 +76,8 @@ if __name__ == '__main__':
     unittest.TextTestRunner(verbosity=2).run(test_suite)
 
     if args.reset and os.path.isfile(FAILED_FILE):
-        sep_str = ' : '
-        with io.open(FAILED_FILE, 'r', encoding='utf-8') as infile:
+        sep_str = " : "
+        with io.open(FAILED_FILE, "r", encoding="utf-8") as infile:
             for failed_line in infile:
                 failed_content = failed_line.strip().split(sep_str)
                 for result_line in fileinput.input(RESULT_FILE, inplace=True):
