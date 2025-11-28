@@ -10,33 +10,21 @@ on:
       - master
       - devel
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
-
-  black:
+  pre-commit:
     runs-on: ubuntu-latest
-    continue-on-error: true
+
     steps:
-      - name: Checkout the code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Code formatting with black
-        run: |
-          pip install black "black[jupyter]"
-          black --check .
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
 
-  isort:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - name: Checkout the code
-        uses: actions/checkout@v4
+      - name: Install pre-commit
+        run: pip install pre-commit
 
-      - name: Code formatting with isort
-        run: |
-          pip install isort
-          isort --check .
-
+      - name: Run pre-commit
+        run: pre-commit run --all-files
