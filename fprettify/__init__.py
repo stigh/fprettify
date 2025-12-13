@@ -1873,6 +1873,139 @@ def get_manual_alignment(lines):
     return manual_lines_indent
 
 
+def _find_split_position(text, max_width):
+    """
+    Locate a suitable breakpoint (prefer whitespace or comma) within max_width.
+    Returns None if no such breakpoint exists.
+    """
+    if max_width < 1:
+        return None
+    search_limit = min(len(text) - 1, max_width)
+    if search_limit < 0:
+        return None
+    
+    spaces = []
+    commas = []
+    
+    for pos, char in CharFilter(text):
+        if pos > search_limit:
+            break
+        if char == ' ':
+            spaces.append(pos)
+        elif char == ',':
+            commas.append(pos)
+    
+    for candidate in reversed(spaces):
+        if len(text) - candidate >= 12:
+            return candidate
+    
+    for candidate in reversed(commas):
+        if len(text) - candidate > 4:
+            return candidate + 1
+    
+    return None
+
+
+def _auto_split_line(line, ind_use, llength, indent_size):
+    """
+    Attempt to split a long logical line into continuation lines that
+    respect the configured line-length limit. Returns a list of new line
+    fragments when successful, otherwise None.
+    """
+    if len(line.rstrip('\n')) <= llength:
+        return None
+    
+    stripped_line = line.lstrip(' ')
+    if not stripped_line:
+        return None
+    
+    split_pos = _find_split_position(stripped_line, llength - ind_use)
+    if split_pos is None:
+        return None
+    
+    first_chunk = ' ' * ind_use + stripped_line[:split_pos] + ' &'
+    remaining = stripped_line[split_pos:]
+    
+    new_lines = [first_chunk]
+    follow_indent = ind_use + indent_size
+    
+    while len(remaining) > (llength - follow_indent):
+        split_pos = _find_split_position(remaining, llength - follow_indent)
+        if split_pos is None:
+            break
+        new_lines.append(' ' * follow_indent + remaining[:split_pos] + ' &')
+        remaining = remaining[split_pos:]
+    
+    if remaining:
+        new_lines.append(' ' * follow_indent + remaining)
+    
+    return new_lines
+
+
+def _insert_split_chunks(idx, split_lines, indent, indent_size, lines, orig_lines):
+    """Replace the original line at `idx` with its split chunks and matching indents."""
+    base_indent = indent[idx]
+    indent.pop(idx)
+    lines.pop(idx)
+    orig_lines.pop(idx)
+
+    follow_indent = base_indent + indent_size
+    new_indents = [base_indent] + [follow_indent] * (len(split_lines) - 1)
+
+    for new_line, new_indent in reversed(list(zip(split_lines, new_indents))):
+        lines.insert(idx, new_line)
+        indent.insert(idx, new_indent)
+        orig_lines.insert(idx, new_line)
+
+
+def _split_inline_comment(line):
+    """Return (code, comment) strings if line contains a detachable inline comment."""
+    if '!' not in line:
+        return None
+
+    has_newline = line.endswith('\n')
+    body = line[:-1] if has_newline else line
+
+    comment_pos = None
+    for pos, _ in CharFilter(body, filter_comments=False):
+        if body[pos] == '!':
+            comment_pos = pos
+            break
+    if comment_pos is None:
+        return None
+
+    code = body[:comment_pos].rstrip()
+    comment = body[comment_pos:].lstrip()
+
+    if not code or not comment:
+        return None
+
+    if has_newline:
+        code += '\n'
+        comment += '\n'
+
+    return code, comment
+
+
+def _detach_inline_comment(idx, indent, lines, orig_lines):
+    """Split an inline comment into its own line keeping indentation metadata."""
+    splitted = _split_inline_comment(lines[idx])
+    if not splitted:
+        return False
+
+    code_line, comment_line = splitted
+    base_indent = indent[idx]
+
+    lines[idx] = code_line
+    orig_lines[idx] = code_line
+
+    indent.insert(idx + 1, base_indent)
+    lines.insert(idx + 1, comment_line)
+    orig_lines.insert(idx + 1, comment_line)
+
+    return True
+
+
 def write_formatted_line(outfile, indent, lines, orig_lines, indent_special, llength, use_same_line, is_omp_conditional, label, filename, line_nr):
     """Write reformatted line to file"""
 
