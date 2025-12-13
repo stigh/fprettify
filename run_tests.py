@@ -19,7 +19,8 @@
 ###############################################################################
 
 import unittest
-from fprettify.tests import FPrettifyTestCase, FAILED_FILE, RESULT_FILE
+from fprettify.tests.unittests import FprettifyUnitTestCase
+from fprettify.tests.fortrantests import generate_suite, FAILED_FILE, RESULT_FILE
 import fileinput
 import io
 import os
@@ -31,11 +32,35 @@ if __name__ == '__main__':
         description='Run tests', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-r", "--reset", action='store_true', default=False,
                         help="Reset test results to new results of failed tests")
+    parser.add_argument("-n", "--name", type=str, help="select tests by name (sections in testsuites.config).")
+
+    parser.add_argument(
+            "-s", "--suite",
+            nargs="+",
+            choices=["unittests", "builtin", "regular", "cron", "custom"],
+            default=["unittests", "builtin"],
+            help="select suite."
+    )
 
     args = parser.parse_args()
 
-    suite = unittest.TestLoader().loadTestsFromTestCase(FPrettifyTestCase)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    test_cases = []
+
+    if args.name:
+        test_cases.append(generate_suite(name=args.name))
+    else:
+        for suite in args.suite:
+            if suite == "unittests":
+                test_cases.append(FprettifyUnitTestCase)
+            else:
+                test_cases.append(generate_suite(suite=suite))
+
+    test_suite = unittest.TestSuite()
+    for test_case in test_cases:
+        test_loaded = unittest.TestLoader().loadTestsFromTestCase(test_case)
+        test_suite.addTest(test_loaded)
+
+    unittest.TextTestRunner(verbosity=2).run(test_suite)
 
     if args.reset and os.path.isfile(FAILED_FILE):
         sep_str = ' : '
