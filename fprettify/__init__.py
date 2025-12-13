@@ -888,7 +888,8 @@ def inspect_ffile_format(infile, indent_size, strict_indent, indent_fypp=False, 
 
         # don't impose indentation for blocked do/if constructs:
         if (IF_RE.search(f_line) or DO_RE.search(f_line)):
-            if (prev_offset != offset or strict_indent):
+            indent_misaligned = indent_size > 0 and offset % indent_size != 0
+            if (prev_offset != offset or strict_indent or indent_misaligned):
                 indents[-1] = indent_size
         else:
             indents[-1] = indent_size
@@ -1054,19 +1055,20 @@ def format_single_fline(f_line, whitespace, whitespace_dict, linebreak_pos,
             'print': 6,           # 6: print / read statements
             'type': 7,            # 7: select type components
             'intrinsics': 8,      # 8: intrinsics
-            'decl': 9             # 9: declarations
+            'decl': 9,            # 9: declarations
+            'concat': 10          # 10: string concatenation
             }
 
     if whitespace == 0:
-        spacey = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        spacey = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     elif whitespace == 1:
-        spacey = [1, 1, 1, 1, 0, 0, 1, 0, 1, 1]
+        spacey = [1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0]
     elif whitespace == 2:
-        spacey = [1, 1, 1, 1, 1, 0, 1, 0, 1, 1]
+        spacey = [1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0]
     elif whitespace == 3:
-        spacey = [1, 1, 1, 1, 1, 1, 1, 0, 1, 1]
+        spacey = [1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0]
     elif whitespace == 4:
-        spacey = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        spacey = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     else:
         raise NotImplementedError("unknown value for whitespace")
 
@@ -1219,6 +1221,17 @@ def add_whitespace_charwise(line, spacey, scope_parser, format_decl, filename, l
                     + ' ' * spacey[7] \
                     + rhs.lstrip(' ')
             line_ftd = line_ftd.rstrip(' ')
+
+        # format string concatenation operator '//'
+        if (char == '/' and line[pos:pos + 2] == "//" and (pos == 0 or line[pos - 1] != '/')
+                and level == 0 and pos > end_of_delim):
+            lhs = line_ftd[:pos + offset]
+            rhs = line_ftd[pos + 2 + offset:]
+            line_ftd = lhs.rstrip(' ') \
+                    + ' ' * spacey[10] \
+                    + '//' \
+                    + ' ' * spacey[10] \
+                    + rhs.lstrip(' ')
 
         # format '::'
         if format_decl and line[pos:pos+2] == "::":
@@ -1445,7 +1458,7 @@ def reformat_inplace(filename, stdout=False, diffonly=False, **kwargs):  # pragm
 def reformat_ffile(infile, outfile, impose_indent=True, indent_size=3, strict_indent=False, impose_whitespace=True,
                    case_dict={},
                    impose_replacements=False, cstyle=False, whitespace=2, whitespace_dict={}, llength=132,
-                   strip_comments=False, format_decl=False, orig_filename=None, indent_fypp=True, indent_mod=True):
+                   strip_comments=False, comment_spacing=1, format_decl=False, orig_filename=None, indent_fypp=True, indent_mod=True):
     """main method to be invoked for formatting a Fortran file."""
 
     # note: whitespace formatting and indentation may require different parsing rules
@@ -1468,7 +1481,7 @@ def reformat_ffile(infile, outfile, impose_indent=True, indent_size=3, strict_in
         reformat_ffile_combined(oldfile, newfile, _impose_indent, indent_size, strict_indent, impose_whitespace,
                                 case_dict,
                                 impose_replacements, cstyle, whitespace, whitespace_dict, llength,
-                                strip_comments, format_decl, orig_filename, indent_fypp, indent_mod)
+                                strip_comments, comment_spacing, format_decl, orig_filename, indent_fypp, indent_mod)
         oldfile = newfile
 
     # 2) indentation
@@ -1481,7 +1494,7 @@ def reformat_ffile(infile, outfile, impose_indent=True, indent_size=3, strict_in
         reformat_ffile_combined(oldfile, newfile, impose_indent, indent_size, strict_indent, _impose_whitespace,
                                 case_dict,
                                 _impose_replacements, cstyle, whitespace, whitespace_dict, llength,
-                                strip_comments, format_decl, orig_filename, indent_fypp, indent_mod)
+                                strip_comments, comment_spacing, format_decl, orig_filename, indent_fypp, indent_mod)
 
 
     outfile.write(newfile.getvalue())
@@ -1490,7 +1503,7 @@ def reformat_ffile(infile, outfile, impose_indent=True, indent_size=3, strict_in
 def reformat_ffile_combined(infile, outfile, impose_indent=True, indent_size=3, strict_indent=False, impose_whitespace=True,
                             case_dict={},
                             impose_replacements=False, cstyle=False, whitespace=2, whitespace_dict={}, llength=132,
-                            strip_comments=False, format_decl=False, orig_filename=None, indent_fypp=True, indent_mod=True):
+                            strip_comments=False, comment_spacing=1, format_decl=False, orig_filename=None, indent_fypp=True, indent_mod=True):
 
     if not orig_filename:
         orig_filename = infile.name
@@ -1548,7 +1561,7 @@ def reformat_ffile_combined(infile, outfile, impose_indent=True, indent_size=3, 
         else:
             indent = [len(l) - len((l.lstrip(' ')).lstrip('&'))  for l in lines]
 
-        comment_lines = format_comments(lines, comments, strip_comments)
+        comment_lines = format_comments(lines, comments, strip_comments, comment_spacing)
 
         auto_align, auto_format, in_format_off_block = parse_fprettify_directives(
             lines, comment_lines, in_format_off_block, orig_filename, stream.line_nr)
@@ -1621,8 +1634,10 @@ def reformat_ffile_combined(infile, outfile, impose_indent=True, indent_size=3, 
             if indent[0] < len(label):
                 indent = [ind + len(label) - indent[0] for ind in indent]
 
-        write_formatted_line(outfile, indent, lines, orig_lines, indent_special, llength,
-                             use_same_line, is_omp_conditional, label, orig_filename, stream.line_nr)
+        allow_auto_split = auto_format and (impose_whitespace or impose_indent)
+        write_formatted_line(outfile, indent, lines, orig_lines, indent_special, indent_size, llength,
+                             use_same_line, is_omp_conditional, label, orig_filename, stream.line_nr,
+                             allow_split=allow_auto_split)
 
         # rm subsequent blank lines
         skip_blank = EMPTY_RE.search(
@@ -1636,13 +1651,13 @@ def reformat_ffile_combined(infile, outfile, impose_indent=True, indent_size=3, 
             else:
                 indent_special = 1
 
-def format_comments(lines, comments, strip_comments):
+def format_comments(lines, comments, strip_comments, comment_spacing=1):
     comments_ftd = []
     for line, comment in zip(lines, comments):
         has_comment = bool(comment.strip())
         if has_comment:
             if strip_comments:
-                sep = not comment.strip() == line.strip()
+                sep = 0 if comment.strip() == line.strip() else comment_spacing
             else:
                 line_minus_comment = line.replace(comment,"")
                 sep = len(line_minus_comment.rstrip('\n')) - len(line_minus_comment.rstrip())
@@ -1860,10 +1875,185 @@ def get_manual_alignment(lines):
     return manual_lines_indent
 
 
-def write_formatted_line(outfile, indent, lines, orig_lines, indent_special, llength, use_same_line, is_omp_conditional, label, filename, line_nr):
+def _find_split_position(text, max_width):
+    """
+    Locate a suitable breakpoint (prefer whitespace or comma) within max_width.
+    Returns None if no such breakpoint exists.
+    """
+    if max_width < 1:
+        return None
+    search_limit = min(len(text) - 1, max_width)
+    if search_limit < 0:
+        return None
+    
+    spaces = []
+    commas = []
+    
+    for pos, char in CharFilter(text):
+        if pos > search_limit:
+            break
+        if char == ' ':
+            spaces.append(pos)
+        elif char == ',':
+            commas.append(pos)
+    
+    for candidate in reversed(spaces):
+        if len(text) - candidate >= 12:
+            return candidate
+    
+    for candidate in reversed(commas):
+        if len(text) - candidate > 4:
+            return candidate + 1
+    
+    return None
+
+
+def _auto_split_line(line, ind_use, llength, indent_size):
+    """
+    Attempt to split a long logical line into continuation lines that
+    respect the configured line-length limit. Returns a list of new line
+    fragments when successful, otherwise None.
+    """
+    if llength < 40:
+        return None
+
+    stripped = line.lstrip(' ')
+    if not stripped:
+        return None
+    if stripped.startswith('&'):
+        return None
+    line_has_newline = stripped.endswith('\n')
+    if line_has_newline:
+        stripped = stripped[:-1]
+
+    has_comment = False
+    for _, char in CharFilter(stripped, filter_comments=False):
+        if char == '!':
+            has_comment = True
+            break
+    if has_comment:
+        return None
+
+    max_first = llength - ind_use - 2  # reserve for trailing ampersand
+    if max_first <= 0:
+        return None
+
+    break_pos = _find_split_position(stripped, max_first)
+    if break_pos is None or break_pos >= len(stripped):
+        return None
+
+    remainder = stripped[break_pos:].lstrip()
+    if not remainder:
+        return None
+
+    first_chunk = stripped[:break_pos].rstrip()
+    new_lines = [first_chunk + ' &']
+
+    current_indent = ind_use + indent_size
+    current = remainder
+
+    while current:
+        available = llength - current_indent
+        if available <= 0:
+            return None
+
+        # final chunk (fits without ampersand)
+        if len(current) + 2 <= available:
+            new_lines.append(current)
+            break
+
+        split_limit = available - 2  # account for ' &' suffix
+        if split_limit <= 0:
+            return None
+
+        cont_break = _find_split_position(current, split_limit)
+        if cont_break is None or cont_break >= len(current):
+            return None
+
+        chunk = current[:cont_break].rstrip()
+        if not chunk:
+            return None
+        new_lines.append(chunk + ' &')
+        current = current[cont_break:].lstrip()
+
+    if line_has_newline:
+        new_lines = [chunk.rstrip('\n') + '\n' for chunk in new_lines]
+
+    return new_lines
+
+
+def _insert_split_chunks(idx, split_lines, indent, indent_size, lines, orig_lines):
+    """Replace the original line at `idx` with its split chunks and matching indents."""
+    base_indent = indent[idx]
+    indent.pop(idx)
+    lines.pop(idx)
+    orig_lines.pop(idx)
+
+    follow_indent = base_indent + indent_size
+    new_indents = [base_indent] + [follow_indent] * (len(split_lines) - 1)
+
+    for new_line, new_indent in reversed(list(zip(split_lines, new_indents))):
+        lines.insert(idx, new_line)
+        indent.insert(idx, new_indent)
+        orig_lines.insert(idx, new_line)
+
+
+def _split_inline_comment(line):
+    """Return (code, comment) strings if line contains a detachable inline comment."""
+    if '!' not in line:
+        return None
+
+    has_newline = line.endswith('\n')
+    body = line[:-1] if has_newline else line
+
+    comment_pos = None
+    for pos, _ in CharFilter(body, filter_comments=False):
+        if body[pos] == '!':
+            comment_pos = pos
+            break
+    if comment_pos is None:
+        return None
+
+    code = body[:comment_pos].rstrip()
+    comment = body[comment_pos:].lstrip()
+
+    if not code or not comment:
+        return None
+
+    if has_newline:
+        code += '\n'
+        comment += '\n'
+
+    return code, comment
+
+
+def _detach_inline_comment(idx, indent, lines, orig_lines):
+    """Split an inline comment into its own line keeping indentation metadata."""
+    splitted = _split_inline_comment(lines[idx])
+    if not splitted:
+        return False
+
+    code_line, comment_line = splitted
+    base_indent = indent[idx]
+
+    lines[idx] = code_line
+    orig_lines[idx] = code_line
+
+    indent.insert(idx + 1, base_indent)
+    lines.insert(idx + 1, comment_line)
+    orig_lines.insert(idx + 1, comment_line)
+
+    return True
+
+
+def write_formatted_line(outfile, indent, lines, orig_lines, indent_special, indent_size, llength, use_same_line, is_omp_conditional, label, filename, line_nr, allow_split):
     """Write reformatted line to file"""
 
-    for ind, line, orig_line in zip(indent, lines, orig_lines):
+    idx = 0
+    while idx < len(lines):
+        ind = indent[idx]
+        line = lines[idx]
+        orig_line = orig_lines[idx]
 
         # get actual line length excluding comment:
         line_length = 0
@@ -1888,15 +2078,33 @@ def write_formatted_line(outfile, indent, lines, orig_lines, indent_special, lle
         else:
             label_use = ''
 
-        if ind_use + line_length <= (llength+1):  # llength (default 132) plus 1 newline char
+        padding = ind_use - 3 * is_omp_conditional - len(label_use) + \
+            len(line) - len(line.lstrip(' '))
+        padding = max(0, padding)
+
+        stripped_line = line.lstrip(' ')
+        rendered_length = len('!$ ' * is_omp_conditional + label_use + ' ' * padding +
+                              stripped_line.rstrip('\n'))
+
+        needs_split = allow_split and rendered_length > llength
+
+        if needs_split:
+            split_lines = _auto_split_line(line, ind_use, llength, indent_size)
+            if split_lines:
+                _insert_split_chunks(idx, split_lines, indent, indent_size, lines, orig_lines)
+                continue
+            if _detach_inline_comment(idx, indent, lines, orig_lines):
+                continue
+
+        if rendered_length <= llength:
             outfile.write('!$ ' * is_omp_conditional + label_use +
-                          ' ' * (ind_use - 3 * is_omp_conditional - len(label_use) +
-                                 len(line) - len(line.lstrip(' '))) +
-                          line.lstrip(' '))
+                          ' ' * padding + stripped_line)
         elif line_length <= (llength+1):
-            outfile.write('!$ ' * is_omp_conditional + label_use + ' ' *
-                          ((llength+1) - 3 * is_omp_conditional - len(label_use) -
-                           len(line.lstrip(' '))) + line.lstrip(' '))
+            # Recompute padding to right-align at the line length limit
+            padding_overflow = (llength + 1) - 3 * is_omp_conditional - len(label_use) - len(line.lstrip(' '))
+            padding_overflow = max(0, padding_overflow)
+            outfile.write('!$ ' * is_omp_conditional + label_use +
+                          ' ' * padding_overflow + line.lstrip(' '))
 
             log_message(LINESPLIT_MESSAGE+" (limit: "+str(llength)+")", "warning",
                         filename, line_nr)
@@ -1904,6 +2112,11 @@ def write_formatted_line(outfile, indent, lines, orig_lines, indent_special, lle
             outfile.write(orig_line)
             log_message(LINESPLIT_MESSAGE+" (limit: "+str(llength)+")", "warning",
                         filename, line_nr)
+
+        if label:
+            label = ''
+
+        idx += 1
 
 
 def get_curr_delim(line, pos):
@@ -1954,6 +2167,7 @@ def process_args(args):
         ws_dict['print'] = args.whitespace_print
         ws_dict['type'] = args.whitespace_type
         ws_dict['intrinsics'] = args.whitespace_intrinsics
+        ws_dict['concat'] = args.whitespace_concat
         return ws_dict
 
     args_out = {}
@@ -1976,6 +2190,7 @@ def process_args(args):
     args_out['whitespace'] = args.whitespace
     args_out['llength'] = 1024 if args.line_length == 0 else args.line_length
     args_out['strip_comments'] = args.strip_comments
+    args_out['comment_spacing'] = args.comment_spacing
     args_out['format_decl'] = args.enable_decl
     args_out['indent_fypp'] = not args.disable_fypp
     args_out['indent_mod'] = not args.disable_indent_mod
@@ -1994,6 +2209,16 @@ def get_arg_parser(args={}):
             return False
         else:
             return None
+
+    def non_negative_int(value):
+        """helper function to ensure a non-negative integer"""
+        try:
+            int_value = int(value)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(str(exc))
+        if int_value < 0:
+            raise argparse.ArgumentTypeError("expected a non-negative integer")
+        return int_value
 
     parser = argparse.ArgumentParser(**args)
 
@@ -2028,6 +2253,8 @@ def get_arg_parser(args={}):
                         help="boolean, en-/disable whitespace for select type components")
     parser.add_argument("--whitespace-intrinsics", type=str2bool, nargs="?", default="None", const=True,
                         help="boolean, en-/disable whitespace for intrinsics like if/write/close")
+    parser.add_argument("--whitespace-concat", type=str2bool, nargs="?", default="None", const=True,
+                        help="boolean, en-/disable whitespace for string concatenation operator //")
     parser.add_argument("--strict-indent", action='store_true', default=False, help="strictly impose indentation even for nested loops")
     parser.add_argument("--enable-decl", action="store_true", default=False, help="enable whitespace formatting of declarations ('::' operator).")
     parser.add_argument("--disable-indent", action='store_true', default=False, help="don't impose indentation")
@@ -2041,6 +2268,8 @@ def get_arg_parser(args={}):
                         " | 2: uppercase")
 
     parser.add_argument("--strip-comments", action='store_true', default=False, help="strip whitespaces before comments")
+    parser.add_argument("--comment-spacing", type=non_negative_int, default=1,
+                        help="number of spaces between code and inline comments when '--strip-comments' is used")
     parser.add_argument('--disable-fypp', action='store_true', default=False,
                         help="Disables the indentation of fypp preprocessor blocks.")
     parser.add_argument('--disable-indent-mod', action='store_true', default=False,
