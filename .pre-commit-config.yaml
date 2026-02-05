@@ -1,11 +1,4 @@
 repos:
-  # https://black.readthedocs.io/en/stable/integrations/source_version_control.html#
-  - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 25.11.0
-    hooks:
-      - id: black
-        files: \.py$
-
   # https://pycqa.github.io/isort/docs/configuration/pre-commit.html
   - repo: https://github.com/PyCQA/isort
     rev: 7.0.0
@@ -13,3 +6,10 @@ repos:
       - id: isort
         files: \.py$
         args: [--profile=black]
+
+  # https://black.readthedocs.io/en/stable/integrations/source_version_control.html#
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 25.11.0
+    hooks:
+      - id: black
+        files: \.py$
