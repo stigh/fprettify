@@ -529,8 +529,7 @@ class FprettifyUnitTestCase(FprettifyTestCase):
         instring = []
         outstring = []
 
-        instring += [
-            """
+        instring += ["""
 #:if DEBUG>  0
 print *, "hola"
 if( .not. (${cond}$) ) then
@@ -540,11 +539,9 @@ print *, "Assert failed!"
 error stop
 end if
 #:endif
-"""
-        ]
+"""]
 
-        outstring += [
-            """
+        outstring += ["""
 #:if DEBUG>  0
    print *, "hola"
    if (.not. (${cond}$)) then
@@ -554,33 +551,27 @@ end if
       error stop
    end if
 #:endif
-"""
-        ]
+"""]
 
-        instring += [
-            """
+        instring += ["""
 if  (.not. (${cond}$)) then
    #:for element in list
    print *, "Element is in list!"
  #:endfor
    error stop
 end if
-"""
-        ]
+"""]
 
-        outstring += [
-            """
+        outstring += ["""
 if (.not. (${cond}$)) then
    #:for element in list
       print *, "Element is in list!"
    #:endfor
    error stop
 end if
-"""
-        ]
+"""]
 
-        instring += [
-            """
+        instring += ["""
 #:if aa > 1
 print  *, "Number is more than 1"
 if (condition) then
@@ -589,11 +580,9 @@ if (condition) then
    #:enddef
 end if
 #:endif
-"""
-        ]
+"""]
 
-        outstring += [
-            """
+        outstring += ["""
 #:if aa > 1
    print *, "Number is more than 1"
    if (condition) then
@@ -602,71 +591,57 @@ end if
       #:enddef
    end if
 #:endif
-"""
-        ]
+"""]
 
-        instring += [
-            """
+        instring += ["""
 #:def DEBUG_CODE( code)
   #:if DEBUG > 0
     $:code
   #:endif
 #:enddef DEBUG_CODE
-"""
-        ]
+"""]
 
-        outstring += [
-            """
+        outstring += ["""
 #:def DEBUG_CODE( code)
    #:if DEBUG > 0
       $:code
    #:endif
 #:enddef DEBUG_CODE
-"""
-        ]
+"""]
 
-        instring += [
-            """
+        instring += ["""
 #:block DEBUG_CODE
   if (a <b) then
     print *, "DEBUG: a is less than b"
   end if
 #:endblock  DEBUG_CODE
-"""
-        ]
+"""]
 
-        outstring += [
-            """
+        outstring += ["""
 #:block DEBUG_CODE
    if (a < b) then
       print *, "DEBUG: a is less than b"
    end if
 #:endblock  DEBUG_CODE
-"""
-        ]
+"""]
 
-        instring += [
-            """
+        instring += ["""
 #:call DEBUG_CODE
   if (a < b) then
     print *, "DEBUG: a is less than b"
   end if
 #:endcall DEBUG_CODE
-"""
-        ]
+"""]
 
-        outstring += [
-            """
+        outstring += ["""
 #:call DEBUG_CODE
    if (a < b) then
       print *, "DEBUG: a is less than b"
    end if
 #:endcall DEBUG_CODE
-"""
-        ]
+"""]
 
-        instring += [
-            """
+        instring += ["""
 #:if DEBUG > 0
 print *, "hola"
 if (.not. (${cond}$)) then
@@ -676,11 +651,9 @@ if (.not. (${cond}$)) then
    error stop
 end if
 #:endif
-"""
-        ]
+"""]
 
-        outstring += [
-            """
+        outstring += ["""
 #:if DEBUG > 0
    print *, "hola"
    if (.not. (${cond}$)) then
@@ -690,11 +663,9 @@ end if
       error stop
    end if
 #:endif
-"""
-        ]
+"""]
 
-        instring += [
-            """
+        instring += ["""
 program try
 #:def mydef
 a = &
@@ -706,11 +677,9 @@ c + &
 d
 #:enddef
 end program
-"""
-        ]
+"""]
 
-        outstring += [
-            """
+        outstring += ["""
 program try
    #:def mydef
       a = &
@@ -722,11 +691,9 @@ program try
          d
    #:enddef
 end program
-"""
-        ]
+"""]
 
-        instring += [
-            """
+        instring += ["""
 #:if worktype
       ${worktype}$, &
 #:else
@@ -734,11 +701,9 @@ end program
 #:endif
          DIMENSION(${arr_exp}$), &
          POINTER :: work
-"""
-        ]
+"""]
 
-        outstring += [
-            """
+        outstring += ["""
 #:if worktype
 ${worktype}$, &
 #:else
@@ -746,8 +711,7 @@ ${worktype}$, &
 #:endif
    DIMENSION(${arr_exp}$), &
    POINTER :: work
-"""
-        ]
+"""]
 
         for instr, outstr in zip(instring, outstring):
             self.assert_fprettify_result([], instr, outstr)
@@ -803,8 +767,7 @@ ${worktype}$, &
         instring = []
         outstring = []
 
-        instring += [
-            """
+        instring += ["""
       CHARACTER(len=*), PARAMETER      :: serialized_string = &
          "qtb_rng_gaussian                         1 F T F   0.0000000000000000E+00&
                           12.0                12.0                12.0&
@@ -813,11 +776,9 @@ ${worktype}$, &
                           12.0                12.0                12.0&
                           12.0                12.0                12.0&
                           12.0                12.0                12.0"
-"""
-        ]
+"""]
 
-        outstring += [
-            """
+        outstring += ["""
       CHARACTER(len=*), PARAMETER      :: serialized_string = &
          "qtb_rng_gaussian                         1 F T F   0.0000000000000000E+00&
 &                          12.0                12.0                12.0&
@@ -826,11 +787,9 @@ ${worktype}$, &
 &                          12.0                12.0                12.0&
 &                          12.0                12.0                12.0&
 &                          12.0                12.0                12.0"
-"""
-        ]
+"""]
 
-        instring += [
-            """
+        instring += ["""
       CHARACTER(len=*), PARAMETER      :: serialized_string = &
          "qtb_rng_gaussian                         1 F T F   0.0000000000000000E+00&
                  &         12.0                12.0                12.0&
@@ -839,11 +798,9 @@ ${worktype}$, &
                  &         12.0                12.0                12.0&
                  &         12.0                12.0                12.0&
                  &         12.0                12.0                12.0"
-"""
-        ]
+"""]
 
-        outstring += [
-            """
+        outstring += ["""
       CHARACTER(len=*), PARAMETER      :: serialized_string = &
          "qtb_rng_gaussian                         1 F T F   0.0000000000000000E+00&
                  &         12.0                12.0                12.0&
@@ -852,8 +809,7 @@ ${worktype}$, &
                  &         12.0                12.0                12.0&
                  &         12.0                12.0                12.0&
                  &         12.0                12.0                12.0"
-"""
-        ]
+"""]
 
         for instr, outstr in zip(instring, outstring):
             self.assert_fprettify_result([], instr, outstr)
