@@ -2317,15 +2317,6 @@ def reformat_ffile_combined(
             allow_split=allow_auto_split,
         )
 
-        # rm subsequent blank lines
-        skip_blank = (
-            EMPTY_RE.search(f_line)
-            and not any(comments)
-            and not is_omp_conditional
-            and not label
-            and not use_same_line
-        )
-
         do_indent, use_same_line = pass_defaults_to_next_line(f_line)
 
         if impose_indent:
