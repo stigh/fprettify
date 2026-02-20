@@ -2027,6 +2027,7 @@ def reformat_inplace(
                 outfile = io.open(filename, "w", encoding="utf-8")
                 outfile.write(newfile.getvalue())
 
+
 def reformat_ffile(
     infile,
     outfile,
@@ -3348,6 +3349,7 @@ def run(argv=sys.argv):  # pragma: no cover
 
             try:
                 reformat_inplace(filename, **file_args)
+
             except FprettifyException as e:
                 log_exception(e, "Fatal error occured")
                 sys.exit(1)
