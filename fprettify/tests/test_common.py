@@ -17,18 +17,22 @@
 #    You should have received a copy of the GNU General Public License
 #    along with fprettify. If not, see <http://www.gnu.org/licenses/>.
 ###############################################################################
-import os, sys, io
 import inspect
+import io
+import os
+import sys
 import unittest
+
 import fprettify
+
 
 def joinpath(path1, path2):
     return os.path.normpath(os.path.join(path1, path2))
 
-_MYPATH = os.path.dirname(os.path.abspath(
-    inspect.getfile(inspect.currentframe())))
 
-# path to fprettify 
+_MYPATH = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+
+# path to fprettify
 RUNSCRIPT = joinpath(_MYPATH, r"../../fprettify.py")
 
 

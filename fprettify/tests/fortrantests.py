@@ -19,45 +19,47 @@
 ###############################################################################
 
 
-import sys
-import hashlib
-import logging
-import io
-import re
-import os
-import difflib
 import configparser
-import shutil
+import difflib
+import hashlib
+import io
+import logging
+import os
+import re
 import shlex
+import shutil
+import sys
 from datetime import datetime
-import fprettify
-from fprettify.tests.test_common import  _MYPATH, FprettifyTestCase, joinpath
 
-_TIMESTAMP = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+import fprettify
+from fprettify.tests.test_common import _MYPATH, FprettifyTestCase, joinpath
+
+_TIMESTAMP = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 # main directory for running tests
-TEST_MAIN_DIR = joinpath(_MYPATH, r'../../fortran_tests')
+TEST_MAIN_DIR = joinpath(_MYPATH, r"../../fortran_tests")
 
 # directory for external Fortran code
-TEST_EXT_DIR = joinpath(TEST_MAIN_DIR, r'test_code')
+TEST_EXT_DIR = joinpath(TEST_MAIN_DIR, r"test_code")
 
 # directory containing Fortran examples
-EXAMPLE_DIR = joinpath(_MYPATH, r'../../examples/in')
+EXAMPLE_DIR = joinpath(_MYPATH, r"../../examples/in")
 
 # backup directory
-BACKUP_DIR = joinpath(TEST_MAIN_DIR, r'test_code_in_' + _TIMESTAMP)
+BACKUP_DIR = joinpath(TEST_MAIN_DIR, r"test_code_in_" + _TIMESTAMP)
 
 # where to store summarized results
-RESULT_DIR = joinpath(TEST_MAIN_DIR, r'test_results')
+RESULT_DIR = joinpath(TEST_MAIN_DIR, r"test_results")
 
 # expected hash-sums
-RESULT_FILE = joinpath(RESULT_DIR, r'expected_results')
+RESULT_FILE = joinpath(RESULT_DIR, r"expected_results")
 
 # test failures
-FAILED_FILE = joinpath(RESULT_DIR, r'failed_results')
+FAILED_FILE = joinpath(RESULT_DIR, r"failed_results")
 
 
 fprettify.set_fprettify_logger(logging.ERROR)
+
 
 class FprettifyIntegrationTestCase(FprettifyTestCase):
     def shortDescription(self):
@@ -86,9 +88,15 @@ class FprettifyIntegrationTestCase(FprettifyTestCase):
         FprettifyIntegrationTestCase.eprint("recognized Fortran files")
         FprettifyIntegrationTestCase.eprint(", ".join(fprettify.FORTRAN_EXTENSIONS))
         FprettifyIntegrationTestCase.eprint("-" * 70)
-        FprettifyIntegrationTestCase.eprint("Applying fprettify to Fortran files in " + TEST_EXT_DIR)
-        FprettifyIntegrationTestCase.eprint("Writing backup of original files to " + BACKUP_DIR)
-        FprettifyIntegrationTestCase.eprint("Storing expected results in " + RESULT_FILE)
+        FprettifyIntegrationTestCase.eprint(
+            "Applying fprettify to Fortran files in " + TEST_EXT_DIR
+        )
+        FprettifyIntegrationTestCase.eprint(
+            "Writing backup of original files to " + BACKUP_DIR
+        )
+        FprettifyIntegrationTestCase.eprint(
+            "Storing expected results in " + RESULT_FILE
+        )
         FprettifyIntegrationTestCase.eprint("Storing failed results in " + FAILED_FILE)
         FprettifyIntegrationTestCase.eprint("-" * 70)
 
@@ -100,23 +108,29 @@ class FprettifyIntegrationTestCase(FprettifyTestCase):
         """
         if cls.n_parsefail + cls.n_internalfail > 0:
             format_str = "{:<20}{:<6}"
-            FprettifyIntegrationTestCase.eprint('\n' + "=" * 70)
-            FprettifyIntegrationTestCase.eprint("IGNORED errors: invalid or old Fortran")
+            FprettifyIntegrationTestCase.eprint("\n" + "=" * 70)
+            FprettifyIntegrationTestCase.eprint(
+                "IGNORED errors: invalid or old Fortran"
+            )
             FprettifyIntegrationTestCase.eprint("-" * 70)
-            FprettifyIntegrationTestCase.eprint(format_str.format("parse errors: ", cls.n_parsefail))
-            FprettifyIntegrationTestCase.eprint(format_str.format("internal errors: ", cls.n_internalfail))
+            FprettifyIntegrationTestCase.eprint(
+                format_str.format("parse errors: ", cls.n_parsefail)
+            )
+            FprettifyIntegrationTestCase.eprint(
+                format_str.format("internal errors: ", cls.n_internalfail)
+            )
 
     @staticmethod
     def write_result(filename, content, sep_str):  # pragma: no cover
-        with io.open(filename, 'a', encoding='utf-8') as outfile:
-            outfile.write(sep_str.join(content) + '\n')
+        with io.open(filename, "a", encoding="utf-8") as outfile:
+            outfile.write(sep_str.join(content) + "\n")
 
     @staticmethod
     def eprint(*args, **kwargs):
         """
         Print to stderr - to print output compatible with default unittest output.
         """
-    
+
         print(*args, file=sys.stderr, flush=True, **kwargs)
 
 
@@ -129,43 +143,48 @@ def generate_suite(suite=None, name=None):
     if not os.path.exists(RESULT_DIR):  # pragma: no cover
         os.makedirs(RESULT_DIR)
     if not os.path.exists(RESULT_FILE):  # pragma: no cover
-        io.open(RESULT_FILE, 'w', encoding='utf-8').close()
+        io.open(RESULT_FILE, "w", encoding="utf-8").close()
     if os.path.exists(FAILED_FILE):  # pragma: no cover
         # erase failures from previous testers
-        io.open(FAILED_FILE, 'w', encoding='utf-8').close()
+        io.open(FAILED_FILE, "w", encoding="utf-8").close()
 
     import git
+
     config = configparser.ConfigParser()
-    config.read(joinpath(TEST_MAIN_DIR, 'testsuites.config'))
+    config.read(joinpath(TEST_MAIN_DIR, "testsuites.config"))
 
     if suite is None and name is None:
         return None
 
     for key in config.sections():
         code = config[key]
-        if code['suite'] == suite or key == name:
+        if code["suite"] == suite or key == name:
             orig = os.getcwd()
             try:
                 os.chdir(TEST_EXT_DIR)
 
-                if not os.path.isdir(code['path']):
+                if not os.path.isdir(code["path"]):
                     print(f"obtaining {key} ...")
-                    exec(code['obtain'])
+                    exec(code["obtain"])
             finally:
                 os.chdir(orig)
 
-            add_test_code(code['path'], code['options'])
+            add_test_code(code["path"], code["options"])
     return FprettifyIntegrationTestCase
+
 
 def normalize_line(line):
     """
     Normalize fortran line in a way that resulting string should be the same
     whether fprettify has been applied or not.
     """
-    line_out = re.sub(r'\n{3,}', r'\n\n', line.lower().replace(' ', '').replace('\t', ''))
+    line_out = re.sub(
+        r"\n{3,}", r"\n\n", line.lower().replace(" ", "").replace("\t", "")
+    )
     # fprettify might add missing ampersands when splitting string
-    line_out = re.sub("^&", '', line_out, flags=re.MULTILINE)
+    line_out = re.sub("^&", "", line_out, flags=re.MULTILINE)
     return line_out
+
 
 def add_test_code(code_path, options):
     print(f"creating test cases from {code_path} ...")
@@ -176,7 +195,11 @@ def add_test_code(code_path, options):
     fprettify_args = fprettify.process_args(args)
 
     for dirpath, _, filenames in os.walk(joinpath(TEST_EXT_DIR, code_path)):
-        for example in [f for f in filenames if any(f.endswith(_) for _ in fprettify.FORTRAN_EXTENSIONS)]:
+        for example in [
+            f
+            for f in filenames
+            if any(f.endswith(_) for _ in fprettify.FORTRAN_EXTENSIONS)
+        ]:
             rel_dirpath = os.path.relpath(dirpath, start=TEST_EXT_DIR)
 
             include_file = True
@@ -190,7 +213,10 @@ def add_test_code(code_path, options):
                             break
 
             if include_file:
-                add_test_method(FprettifyIntegrationTestCase, rel_dirpath, example, fprettify_args)
+                add_test_method(
+                    FprettifyIntegrationTestCase, rel_dirpath, example, fprettify_args
+                )
+
 
 def add_test_method(testcase, fpath, ffile, args):
     """add a test method for each example."""
@@ -209,11 +235,11 @@ def add_test_method(testcase, fpath, ffile, args):
         def test_result(path, info):
             return [os.path.relpath(path, TEST_EXT_DIR), info]
 
-        with io.open(example, 'r', encoding='utf-8') as infile:
+        with io.open(example, "r", encoding="utf-8") as infile:
             instring = infile.read()
 
         # write backup of original file
-        with io.open(example_backup, 'w', encoding='utf-8') as outfile:
+        with io.open(example_backup, "w", encoding="utf-8") as outfile:
             outfile.write(instring)
 
         # initialize outstring containing reformatted file content
@@ -224,11 +250,11 @@ def add_test_method(testcase, fpath, ffile, args):
             fprettify.reformat_inplace(example, **args)
 
             # update outstring
-            with io.open(example, 'r', encoding='utf-8') as outfile:
+            with io.open(example, "r", encoding="utf-8") as outfile:
                 outstring = outfile.read()
 
             m = hashlib.sha256()
-            m.update(outstring.encode('utf-8'))
+            m.update(outstring.encode("utf-8"))
 
             test_info = "checksum"
             test_content = test_result(example, m.hexdigest())
@@ -252,39 +278,51 @@ def add_test_method(testcase, fpath, ffile, args):
         orig_stripped = normalize_line(instring)
         new_stripped = normalize_line(outstring)
 
-        testcase.assertMultiLineEqual(orig_stripped, new_stripped, "fprettify caused changes other than whitespace or lower/upper case")
+        testcase.assertMultiLineEqual(
+            orig_stripped,
+            new_stripped,
+            "fprettify caused changes other than whitespace or lower/upper case",
+        )
 
-        sep_str = ' : '
-        with io.open(RESULT_FILE, 'r', encoding='utf-8') as infile:
+        sep_str = " : "
+        with io.open(RESULT_FILE, "r", encoding="utf-8") as infile:
             found = False
             for line in infile:
                 line_content = line.strip().split(sep_str)
                 if line_content[0] == test_content[0]:
                     found = True
                     FprettifyIntegrationTestCase.eprint(test_info, end=" ")
-                    msg = '{} (old) != {} (new)'.format(
-                        line_content[1], test_content[1])
-                    if test_info == "checksum" and outstring.count('\n') < 10000:
+                    msg = "{} (old) != {} (new)".format(
+                        line_content[1], test_content[1]
+                    )
+                    if test_info == "checksum" and outstring.count("\n") < 10000:
                         # difflib can not handle large files
-                        result = list(difflib.unified_diff(instring.splitlines(
-                            True), outstring.splitlines(True), fromfile=test_content[0], tofile=line_content[0]))
-                        msg += '\n' + ''.join(result)
+                        result = list(
+                            difflib.unified_diff(
+                                instring.splitlines(True),
+                                outstring.splitlines(True),
+                                fromfile=test_content[0],
+                                tofile=line_content[0],
+                            )
+                        )
+                        msg += "\n" + "".join(result)
                     try:
-                        testcase.assertEqual(
-                            line_content[1], test_content[1], msg)
+                        testcase.assertEqual(line_content[1], test_content[1], msg)
                     except AssertionError:  # pragma: no cover
                         FprettifyIntegrationTestCase.write_result(
-                            FAILED_FILE, test_content, sep_str)
+                            FAILED_FILE, test_content, sep_str
+                        )
                         raise
                     break
 
         if not found:  # pragma: no cover
             FprettifyIntegrationTestCase.eprint(test_info + " new", end=" ")
-            FprettifyIntegrationTestCase.write_result(RESULT_FILE, test_content, sep_str)
+            FprettifyIntegrationTestCase.write_result(
+                RESULT_FILE, test_content, sep_str
+            )
 
     # not sure why this even works, using "test something" (with a space) as function name...
     # however it gives optimal test output
-    testmethod.__name__ = ("test " + joinpath(fpath, ffile))
+    testmethod.__name__ = "test " + joinpath(fpath, ffile)
 
     setattr(testcase, testmethod.__name__, testmethod)
-
