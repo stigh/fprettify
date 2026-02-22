@@ -55,6 +55,23 @@ if __name__ == "__main__":
         help="select suite.",
     )
 
+    parser.add_argument(
+        "-v",
+        "--verbosity",
+        type=int,
+        choices=[0, 1, 2],
+        default=2,
+        help="test runner verbosity (0=quiet, 1=normal, 2=verbose).",
+    )
+
+    parser.add_argument(
+        "-b",
+        "--buffer",
+        action="store_true",
+        default=False,
+        help="buffer test stdout/stderr and only show it for failing tests.",
+    )
+
     args = parser.parse_args()
 
     test_cases = []
@@ -73,7 +90,9 @@ if __name__ == "__main__":
         test_loaded = unittest.TestLoader().loadTestsFromTestCase(test_case)
         test_suite.addTest(test_loaded)
 
-    result = unittest.TextTestRunner(verbosity=2).run(test_suite)
+    result = unittest.TextTestRunner(
+        verbosity=args.verbosity, buffer=args.buffer
+    ).run(test_suite)
 
     if args.reset and os.path.isfile(FAILED_FILE):
         sep_str = " : "
